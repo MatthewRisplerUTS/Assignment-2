@@ -28,3 +28,54 @@ def lexer(input):
             
             tokens.append(('IDENTIFIER', identifier_str))
             continue
+
+        if char == '+':
+            tokens.append(('PLUS', char))
+            i += 1
+            continue
+
+        if char == '-':
+            tokens.append(('MINUS', char))
+            i += 1
+            continue
+
+        if char == '×':
+            tokens.append(('MULT', char))
+            i += 1
+            continue
+
+        if char == '=':
+            tokens.append(('EQUALS', char))
+            i += 1
+            continue
+
+        if char == '?':
+            tokens.append(('CONDITIONAL', char))
+            i += 1
+            continue
+
+        if char == 'λ':
+            tokens.append(('LAMBDA', char))
+            i += 1
+            continue
+
+        if char == '≜':
+            tokens.append(('LET', char))
+            i += 1
+            continue
+
+        if char == '(':
+            tokens.append(('LPAREN', char))
+            i += 1
+            continue
+        
+        if char == ')':
+            tokens.append(('RPAREN', char))
+            i += 1
+            continue
+        
+        if n == 0:
+            raise SyntaxError("Empty Input")
+
+        else:
+            raise SyntaxError("Unexpected Char")
