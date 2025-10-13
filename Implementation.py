@@ -4,6 +4,9 @@ def lexer(input):
 
     tokens = []
 
+    if n == 0:
+            raise SyntaxError("Empty Input")
+
     for i in range(n):
         char = input[i]
 
@@ -73,9 +76,12 @@ def lexer(input):
             tokens.append(('RPAREN', char))
             i += 1
             continue
-        
-        if n == 0:
-            raise SyntaxError("Empty Input")
+
+        if char.isspace():
+            i += 1
+            continue
 
         else:
             raise SyntaxError("Unexpected Char")
+    
+    return tokens
