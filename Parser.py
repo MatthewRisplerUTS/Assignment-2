@@ -40,23 +40,35 @@ def parser(tokens, parse_table):
     while len(parser_stack) != 0:
         top_symbol = parser_stack.pop()
 
+        # Non-terminal handling
         if type(top_symbol) == str and top_symbol.startswith('<'):
             if (top_symbol, next_token) in parse_table:
-                non_reversed_pt = parse_table(top_symbol, next_token)
+                non_reversed_pt = parse_table[(top_symbol, next_token)]
                 for symbol in reversed(non_reversed_pt):
                     parser_stack.append(symbol)
             else:
                 raise SyntaxError("Unexpected lexer token")
             
+        # Terminal handling
         if top_symbol.startswith('<') == False:
             if top_symbol == next_token:
-                parser_stack.pop()
-                position += 1
-                next_token = tokens[position][0]
+                if next_token != '$':
+                    position += 1
+                    next_token = tokens[position][0]
             else:
                 raise SyntaxError("Error")
+            
+        # RPAREN handling
+        if top_symbol == '':
+            continue
         
     if next_token == '$':
         print("Complete")
     else:
         raise SyntaxError("Error")
+    
+if __name__ == "__main__":
+    test_input = "(+ 2 3)"
+    tokens = lexer(test_input) + [('$',  '$')]
+    print(tokens)
+    parser(tokens, parse_table)
