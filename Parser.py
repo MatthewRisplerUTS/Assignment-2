@@ -1,6 +1,36 @@
 from Lexer import lexer
 
-parse_table = {}
+parse_table = {
+
+    #<program>
+    ('<program>', 'NUMBER'): ['<expr>'],
+    ('<program>', 'IDENTIFIER'): ['<expr>'],
+    ('<program>', 'LPAREN'): ['<expr>'],
+
+    #<expr>
+    ('<expr>', 'NUMBER'): ['NUMBER'],
+    ('<expr>', 'IDENTIFIER'): ['IDENTIFIER'],
+    ('<expr>', 'LPAREN'): ['LPAREN', '<paren-expr>', 'RPAREN'],
+
+    #<paren-expr>
+    ('<paren-expr>', 'NUMBER'): ['<expr>', '<more_expr>'],
+    ('<paren-expr>', 'IDENTIFIER'): ['<expr>', '<more_expr>'],
+    ('<paren-expr>', 'LPAREN'): ['<expr>', '<more_expr>'],
+    ('<paren-expr>', 'PLUS'): ['PLUS', '<expr>', '<expr>'],
+    ('<paren-expr>', 'MULT'): ['MULT', '<expr>', '<expr>'],
+    ('<paren-expr>', 'EQUALS'): ['EQUALS', '<expr>', '<expr>'],
+    ('<paren-expr>', 'MINUS'): ['MINUS', '<expr>', '<expr>'],
+    ('<paren-expr>', 'CONDITIONAL'): ['CONDITIONAL', '<expr>', '<expr>', '<expr>'],
+    ('<paren-expr>', 'LAMBDA'): ['LAMBDA', 'IDENTIFIER', '<expr>'],
+    ('<paren-expr>', 'LET'): ['LET', 'IDENTIFIER', '<expr>', '<expr>'],
+
+    #<more_expr>
+    ('<more_expr>', 'RPAREN'): [''],
+    ('<more_expr>', 'NUMBER'): ['<expr>', '<more_expr>'],
+    ('<more_expr>', 'IDENTIFIER'): ['<expr>', '<more_expr>'],
+    ('<more_expr>', 'LPAREN'): ['<expr>', '<more_expr>'],
+
+}
 
 def parser(tokens, parse_table):
     parser_stack = ['$', '<program>']
