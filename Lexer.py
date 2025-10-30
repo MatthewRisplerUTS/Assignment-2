@@ -14,7 +14,7 @@ def lexer(input):
             number_str = char
             i += 1
 
-            while input[i].isdigit() and i < n:
+            while i < n and input[i].isdigit():
                 number_str += input[i]
                 i += 1
             
@@ -25,7 +25,7 @@ def lexer(input):
             identifier_str = char
             i += 1
 
-            while input[i].isalpha() and i < n:
+            while i < n and input[i].isalpha():
                 identifier_str += input[i]
                 i += 1
             
@@ -37,7 +37,7 @@ def lexer(input):
             i += 1
             continue
 
-        if char == '-':
+        if char == '−':
             tokens.append(('MINUS', char))
             i += 1
             continue
