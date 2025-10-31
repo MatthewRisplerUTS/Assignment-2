@@ -33,6 +33,7 @@ parse_table = {
 }
 def construct_parse_tree(token_stream):
     # recursively builds a parse tree from the token list."""
+    
     def interpret_expr(cursor):
         tok_type, tok_val = token_stream[cursor]
         
@@ -58,21 +59,29 @@ def construct_parse_tree(token_stream):
                 body_node, nxt2 = interpret_expr(nxt1)
                 assert token_stream[nxt2][0] == 'RPAREN', "Missing ) after let body"
                 return ['LET', var_token, val_node, body_node], nxt2 + 1
-            
-            # Binary or ternary operators
-            left_node, nxt1 = interpret_expr(cursor + 2)
-            right_node, nxt2 = interpret_expr(nxt1)
 
-            # Conditional form (? a b c)
+            # Conditional form (? cond true false)
             if op_t == 'CONDITIONAL':
-                third_node, nxt3 = interpret_expr(nxt2)
+                cond_node, nxt1 = interpret_expr(cursor + 2)
+                true_node, nxt2 = interpret_expr(nxt1)
+                false_node, nxt3 = interpret_expr(nxt2)
                 assert token_stream[nxt3][0] == 'RPAREN', "Missing ) after conditional"
-                return ['CONDITIONAL', left_node, right_node, third_node], nxt3 + 1
+                return ['CONDITIONAL', cond_node, true_node, false_node], nxt3 + 1
 
             # Binary operators (+, ×, =, −)
-            assert token_stream[nxt2][0] == 'RPAREN', "Missing ) after expression"
-            return [op_t, left_node, right_node], nxt2 + 1
-        # Fallback error
+            if op_t in ('PLUS', 'MULT', 'EQUALS', 'MINUS'):
+                left_node, nxt1 = interpret_expr(cursor + 2)
+                right_node, nxt2 = interpret_expr(nxt1)
+                assert token_stream[nxt2][0] == 'RPAREN', f"Missing ) after {op_v} expression"
+                return [op_t, left_node, right_node], nxt2 + 1
+            
+            expr_nodes = []
+            op_node = interpret_expr(cursor + 1)[0]
+            cursor_pos = cursor + 2
+            while token_stream[cursor_pos][0] != 'RPAREN':
+                arg_node, cursor_pos = interpret_expr(cursor_pos)
+                expr_nodes.append(arg_node)
+            return ['CALL', op_node] + expr_nodes, cursor_pos + 1
         raise SyntaxError(f"Unexpected token '{tok_val}' at position {cursor}")
 
     root_node, end_index = interpret_expr(0)
