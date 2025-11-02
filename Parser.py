@@ -1,18 +1,17 @@
-from Lexer import lexer
+from lexer import lexer
 
 parse_table = {
-
-    #<program>
+    # <program>
     ('<program>', 'NUMBER'): ['<expr>'],
     ('<program>', 'IDENTIFIER'): ['<expr>'],
     ('<program>', 'LPAREN'): ['<expr>'],
 
-    #<expr>
+    # <expr>
     ('<expr>', 'NUMBER'): ['NUMBER'],
     ('<expr>', 'IDENTIFIER'): ['IDENTIFIER'],
     ('<expr>', 'LPAREN'): ['LPAREN', '<paren-expr>', 'RPAREN'],
 
-    #<paren-expr>
+    # <paren-expr>
     ('<paren-expr>', 'NUMBER'): ['<expr>', '<more_expr>'],
     ('<paren-expr>', 'IDENTIFIER'): ['<expr>', '<more_expr>'],
     ('<paren-expr>', 'LPAREN'): ['<expr>', '<more_expr>'],
@@ -24,112 +23,151 @@ parse_table = {
     ('<paren-expr>', 'LAMBDA'): ['LAMBDA', 'IDENTIFIER', '<expr>'],
     ('<paren-expr>', 'LET'): ['LET', 'IDENTIFIER', '<expr>', '<expr>'],
 
-    #<more_expr>
+    # <more_expr>
     ('<more_expr>', 'RPAREN'): [''],
     ('<more_expr>', 'NUMBER'): ['<expr>', '<more_expr>'],
     ('<more_expr>', 'IDENTIFIER'): ['<expr>', '<more_expr>'],
     ('<more_expr>', 'LPAREN'): ['<expr>', '<more_expr>'],
-
 }
-def construct_parse_tree(token_stream):
-    # recursively builds a parse tree from the token list."""
-    
-    def interpret_expr(cursor):
-        tok_type, tok_val = token_stream[cursor]
-        
-        # case: numeric literal or identifier
-        if tok_type in ('NUMBER', 'IDENTIFIER'):
-            return tok_val, cursor + 1
-            
-        # case: parenthesised expression
-        if tok_type == 'LPAREN':
-            op_t, op_v = token_stream[cursor + 1]
-            
-            # Handle λ expression
-            if op_t == 'LAMBDA':
-                var_token = token_stream[cursor + 2][1]
-                body_node, nxt = interpret_expr(cursor + 3)
-                assert token_stream[nxt][0] == 'RPAREN', "Missing ) after lambda body"
-                return ['LAMBDA', var_token, body_node], nxt + 1
-            
-            # Handle ≜ let-binding
-            if op_t == 'LET':
-                var_token = token_stream[cursor + 2][1]
-                val_node, nxt1 = interpret_expr(cursor + 3)
-                body_node, nxt2 = interpret_expr(nxt1)
-                assert token_stream[nxt2][0] == 'RPAREN', "Missing ) after let body"
-                return ['LET', var_token, val_node, body_node], nxt2 + 1
 
-            # Conditional form (? cond true false)
-            if op_t == 'CONDITIONAL':
-                cond_node, nxt1 = interpret_expr(cursor + 2)
-                true_node, nxt2 = interpret_expr(nxt1)
-                false_node, nxt3 = interpret_expr(nxt2)
-                assert token_stream[nxt3][0] == 'RPAREN', "Missing ) after conditional"
-                return ['CONDITIONAL', cond_node, true_node, false_node], nxt3 + 1
-
-            # Binary operators (+, ×, =, −)
-            if op_t in ('PLUS', 'MULT', 'EQUALS', 'MINUS'):
-                left_node, nxt1 = interpret_expr(cursor + 2)
-                right_node, nxt2 = interpret_expr(nxt1)
-                assert token_stream[nxt2][0] == 'RPAREN', f"Missing ) after {op_v} expression"
-                return [op_t, left_node, right_node], nxt2 + 1
-            
-            expr_nodes = []
-            op_node = interpret_expr(cursor + 1)[0]
-            cursor_pos = cursor + 2
-            while token_stream[cursor_pos][0] != 'RPAREN':
-                arg_node, cursor_pos = interpret_expr(cursor_pos)
-                expr_nodes.append(arg_node)
-            return ['CALL', op_node] + expr_nodes, cursor_pos + 1
-        raise SyntaxError(f"Unexpected token '{tok_val}' at position {cursor}")
-
-    root_node, end_index = interpret_expr(0)
-    if token_stream[end_index][0] != '$':
-        raise SyntaxError("Unexpected extra tokens at end of input")
-    return root_node
 
 def parser(tokens, parse_table):
-    parser_stack = ['$', '<program>']
-    position = 0
-    next_token = tokens[position][0]
+    position = [0]
 
-    while len(parser_stack) != 0:
-        top_symbol = parser_stack.pop()
+    def peek():
+        if position[0] < len(tokens):
+            return tokens[position[0]]
+        return ('$', '$')
 
-        # Non-terminal handling
-        if type(top_symbol) == str and top_symbol.startswith('<'):
-            if (top_symbol, next_token) in parse_table:
-                non_reversed_pt = parse_table[(top_symbol, next_token)]
-                for symbol in reversed(non_reversed_pt):
-                    parser_stack.append(symbol)
-            else:
-                raise SyntaxError("Unexpected lexer token")
-            
-        # Terminal handling
-        if top_symbol.startswith('<') == False:
-            if top_symbol == next_token:
-                if next_token != '$':
-                    position += 1
-                    next_token = tokens[position][0]
-            else:
-                raise SyntaxError("Error")
-            
-        # RPAREN handling
-        if top_symbol == '':
-            continue
-        
-    if next_token == '$':
-        print("Complete")
-    else:
-        raise SyntaxError("Error")
-    
+    def advance():
+        token = peek()
+        position[0] += 1
+        return token
+
+    def parse_expr():
+        token_type, token_value = peek()
+
+        if token_type == 'NUMBER':
+            advance()
+            return ['NUMBER', token_value]
+        elif token_type == 'IDENTIFIER':
+            advance()
+            return ['IDENTIFIER', token_value]
+        elif token_type == 'LPAREN':
+            advance()  # consume '('
+            result = parse_paren_expr()
+            if peek()[0] != 'RPAREN':
+                raise SyntaxError(f"Expected ')' but found '{peek()[0]}'")
+            advance()  # consume ')'
+            return result
+        else:
+            raise SyntaxError(f"Unexpected token in <expr>: {token_type}")
+
+    def parse_paren_expr():
+        token_type, token_value = peek()
+        if token_type == 'PLUS':
+            advance()
+            expr1 = parse_expr()
+            expr2 = parse_expr()
+            return ['PLUS', expr1, expr2]
+
+        elif token_type == 'MULT':
+            advance()
+            expr1 = parse_expr()
+            expr2 = parse_expr()
+            return ['MULT', expr1, expr2]
+
+        elif token_type == 'EQUALS':
+            advance()
+            expr1 = parse_expr()
+            expr2 = parse_expr()
+            return ['EQUALS', expr1, expr2]
+
+        elif token_type == 'MINUS':
+            advance()
+            expr1 = parse_expr()
+            expr2 = parse_expr()
+            return ['MINUS', expr1, expr2]
+
+        elif token_type == 'CONDITIONAL':
+            advance()
+            expr1 = parse_expr()
+            expr2 = parse_expr()
+            expr3 = parse_expr()
+            return ['CONDITIONAL', expr1, expr2, expr3]
+
+        elif token_type == 'LAMBDA':
+            advance()
+            if peek()[0] != 'IDENTIFIER':
+                raise SyntaxError("Lambda requires IDENTIFIER parameter")
+            _, param = advance()
+            body = parse_expr()
+            return ['LAMBDA', param, body]
+
+        elif token_type == 'LET':
+            advance()
+            if peek()[0] != 'IDENTIFIER':
+                raise SyntaxError("Let requires IDENTIFIER")
+            _, var = advance()
+            value = parse_expr()
+            body = parse_expr()
+            return ['LET', var, value, body]
+
+        elif token_type in ['NUMBER', 'IDENTIFIER', 'LPAREN']:
+            exprs = []
+            exprs.append(parse_expr())
+
+            while peek()[0] in ['NUMBER', 'IDENTIFIER', 'LPAREN']:
+                exprs.append(parse_expr())
+
+            if len(exprs) == 1:
+                return exprs[0]
+            return exprs
+
+        else:
+            raise SyntaxError(f"Unexpected token in <paren-expr>: {token_type}")
+
+    result = parse_expr()
+
+    if peek()[0] != '$':
+        raise SyntaxError(f"Unexpected tokens after parse: {peek()}")
+
+    return result
+
+
+parser_with_tree = parser
+
 if __name__ == "__main__":
-    test_input = "(+ 2 3)"
-    tokens = lexer(test_input) + [('$',  '$')]
-    print(tokens)
-    parser(tokens, parse_table)
-    
-    print("Parse Tree Output:")
-    tree_view = construct_parse_tree(tokens)
-    print(tree_view)
+    try:
+        from lexer import lexer
+    except ImportError:
+        from .lexer import lexer
+
+    # Test cases
+    test_cases = [
+        "42",
+        "x",
+        "(+ 2 3)",
+        "(× 2 3)",
+        "(+ (× 2 3) 4)",
+        "(? (= x 0) 1 0)",
+        "(λ x x)",
+        "(≜ y 10 y)",
+        "((λ x (+ x 1)) 5)",
+    ]
+
+    print("Testing Parser with Parse Tree Construction")
+    print("=" * 60)
+
+    for test_input in test_cases:
+        try:
+            tokens = lexer(test_input)
+            tokens.append(('$', '$'))
+            tree = parser(tokens, parse_table)
+            print(f"\nInput:  {test_input}")
+            print(f"Tree:   {tree}")
+        except Exception as e:
+            print(f"\nInput:  {test_input}")
+            print(f"Error:  {type(e).__name__}: {e}")
+
+    print("\n" + "=" * 60)
