@@ -7,7 +7,7 @@ def lexer(input):
     if n == 0:
             raise SyntaxError("Empty Input")
 
-    for i in range(n):
+    while i < n:
         char = input[i]
 
         if char.isdigit():
@@ -19,17 +19,6 @@ def lexer(input):
                 i += 1
             
             tokens.append(('NUMBER', int(number_str)))
-            continue
-        
-        if char.isalpha():
-            identifier_str = char
-            i += 1
-
-            while i < n and input[i].isalpha():
-                identifier_str += input[i]
-                i += 1
-            
-            tokens.append(('IDENTIFIER', identifier_str))
             continue
 
         if char == '+':
@@ -75,6 +64,17 @@ def lexer(input):
         if char == ')':
             tokens.append(('RPAREN', char))
             i += 1
+            continue
+        
+        if char.isalpha():
+            identifier_str = char
+            i += 1
+
+            while i < n and input[i].isalpha():
+                identifier_str += input[i]
+                i += 1
+            
+            tokens.append(('IDENTIFIER', identifier_str))
             continue
 
         if char.isspace():
